@@ -1,0 +1,33 @@
+---
+- hosts: all
+  remote_user: root
+  tasks:
+  - name: install yum packages
+    yum: pkg={{ item }} state=latest
+    with_items:
+      - vim-enhanced
+      - man
+      - git
+      - bind-utils
+      - curl
+      - dos2unix
+      - unix2dos
+      - iotop
+      - jwhois
+      - lsof
+      - lynx
+      - mailx
+      - nmap
+      - ntp
+      - ntpdate
+      - rsync
+      - telnet
+      - tcpdump
+      - wget
+      - yum-cron
+      - zip
+      - unzip
+      - traceroute
+      - bash-completion
+      - epel-release
+      
