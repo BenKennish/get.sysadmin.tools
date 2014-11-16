@@ -1,7 +1,41 @@
 ---
 - hosts: all
   remote_user: root
+
+  vars:
+      root_email: ben@kennish.net
+
   tasks:
+  - name: yum update everything
+    yum: name=* state=latest
+  
+  - name: SSH - disable password auth
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      backup: yes
+      line: "PasswordAuthentication no"
+      regexp: "^PasswordAuthentication "
+      insertafter: "^#PasswordAuthentication "
+    notify: restart sshd
+
+  - name: SSH - disable GSSAPI auth
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      backup: yes
+      line: "GSSAPIAuthentication no"
+      regexp: "^GSSAPIAuthentication "
+      insertafter: "^#GSSAPIAuthentication "
+    notify: restart sshd
+
+  - name: SSH - disable challenge response auth
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      backup: yes
+      line: "ChallengeResponseAuthentication no"
+      regexp: "^ChallengeResponseAuthentication "
+      insertafter: "^#ChallengeResponseAuthentication "
+    notify: restart sshd
+
   - name: install yum packages
     yum: pkg={{ item }} state=latest
     with_items:
@@ -30,4 +64,23 @@
       - traceroute
       - bash-completion
       - epel-release
-      
+
+  - name: setting root email alias to {{ root_email }}
+    lineinfile:
+        dest: /etc/aliases
+        backup: yes
+        line: "root:          {{ root_email }}"
+        regexp: "^root:"
+        insertafter: "^#root:"
+    notify: new aliases
+
+  - name: enable yum-cron
+    service: name=yum-cron state=started enabled=yes
+
+
+  handlers:
+    - name: update aliases database
+      command: newaliases
+
+    - name: restart sshd
+      service: name=sshd state=restarted
