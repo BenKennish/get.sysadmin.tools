@@ -3,9 +3,12 @@
   remote_user: root
 
   vars:
+      # **TODO**: allow these vars to be set from command line
       root_email: ben@kennish.net
       timezone: "Europe/London"
       ntpCountry: "uk"  #used for NTP config
+      sudoUser: "bill"
+      sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
 
   tasks:
   #- name: yum update everything
@@ -20,7 +23,7 @@
       insertafter: "^#PasswordAuthentication "
     notify: restart sshd
 
-#   set root password to random string?
+#   **TODO** set root password to a random string
 
   - name: OpenSSH - disable GSSAPI auth
     lineinfile:
@@ -40,34 +43,34 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-  - name: install yum packages
-    yum: pkg={{ item }} state=latest
-    with_items:
-      - vim-enhanced
-      - man
-      - git
-      - bind-utils
-      - curl
-      - dos2unix
-      - unix2dos
-      - iotop
-      - jwhois
-      - lsof
-      - lynx
-      - mailx
-      - nmap
-      - ntp
-      - ntpdate
-      - rsync
-      - telnet
-      - tcpdump
-      - wget
-      - yum-cron
-      - zip
-      - unzip
-      - traceroute
-      - bash-completion
-      - epel-release
+  # - name: install useful RPMs using yum
+  #   yum: pkg={{ item }} state=latest
+  #   with_items:
+  #     - vim-enhanced
+  #     - man
+  #     - git
+  #     - bind-utils
+  #     - curl
+  #     - dos2unix
+  #     - unix2dos
+  #     - iotop
+  #     - jwhois
+  #     - lsof
+  #     - lynx
+  #     - mailx
+  #     - nmap
+  #     - ntp
+  #     - ntpdate
+  #     - rsync
+  #     - telnet
+  #     - tcpdump
+  #     - wget
+  #     - yum-cron
+  #     - zip
+  #     - unzip
+  #     - traceroute
+  #     - bash-completion
+  #     - epel-release
 
   - name: root email alias to {{ root_email }}
     lineinfile:
@@ -106,12 +109,41 @@
   - name: start and enable ntpd
     service: name=ntpd state=started enabled=yes
 
-  - name: fetch dot config files (e.g. .bashrc)
+# do this for all users (modifying /etc/skel?) before creating the ben user?
+
+  - name: setting up user 'dot-config' files (e.g. .bashrc) in /etc/skel
     get_url: url=https://get.sysadmin.tools/dotFiles/{{ item }} dest="~/.{{ item }}" mode=0644
     with_items:
       - "bashrc"
       - "vimrc"
       - "gitconfig"
+
+  # **TODO**: iptables config
+
+  - name: create directories in home for vim
+    file: name="~/{{ item }}" state=directory mode=0700
+    with_items:
+        - ".vim/swap"
+        - ".vim/backup"
+
+  - name: create user '{{ sudoUser }}' and add them to 'wheel' group
+    user: name={{ sudoUser }} append=yes groups=wheel
+
+  - name: allow wheel group to use sudo
+    lineinfile:
+        dest: /etc/sudoers
+        line: "%wheel  ALL=(ALL)       ALL"
+        regexp: "^#? *%wheel +ALL=(ALL) +ALL"
+        validate: 'visudo -cf %s'
+
+  # default sudo timeout is 5 mins
+  - name: set sudo timeout to {{ sudoTimeout }}mins
+    lineinfile:
+        dest: /etc/sudoers
+        line: "Defaults    timestamp_timeout={{ sudoTimeout }}"
+        regexp: "^Defaults +timestamp_timeout=[0-9]+ *$"
+        insertafter: "Defaults +env_reset"
+        validate: 'visudo -cf %s'
 
   handlers:
     - name: update aliases database
