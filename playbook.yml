@@ -4,12 +4,14 @@
 
   vars:
       root_email: ben@kennish.net
+      timezone: "Europe/London"
+      ntpCountry: "uk"  #used for NTP config
 
   tasks:
-  - name: yum update everything
-    yum: name=* state=latest
-  
-  - name: SSH - disable password auth
+  #- name: yum update everything
+  #  yum: name=* state=latest
+
+  - name: OpenSSH - disable password auth
     lineinfile:
       dest: /etc/ssh/sshd_config
       backup: yes
@@ -18,7 +20,9 @@
       insertafter: "^#PasswordAuthentication "
     notify: restart sshd
 
-  - name: SSH - disable GSSAPI auth
+#   set root password to random string?
+
+  - name: OpenSSH - disable GSSAPI auth
     lineinfile:
       dest: /etc/ssh/sshd_config
       backup: yes
@@ -27,7 +31,7 @@
       insertafter: "^#GSSAPIAuthentication "
     notify: restart sshd
 
-  - name: SSH - disable challenge response auth
+  - name: OpenSSH - disable challenge response auth
     lineinfile:
       dest: /etc/ssh/sshd_config
       backup: yes
@@ -65,18 +69,49 @@
       - bash-completion
       - epel-release
 
-  - name: setting root email alias to {{ root_email }}
+  - name: root email alias to {{ root_email }}
     lineinfile:
         dest: /etc/aliases
         backup: yes
         line: "root:          {{ root_email }}"
         regexp: "^root:"
         insertafter: "^#root:"
-    notify: new aliases
+    notify: update aliases database
 
-  - name: enable yum-cron
+  - name: start and enable yum-cron
     service: name=yum-cron state=started enabled=yes
 
+  - name: configure timezone (/etc/sysconfig/clock)
+    lineinfile:
+      dest: /etc/sysconfig/clock
+      backup: yes
+      line: 'ZONE="{{ timezone }}"'
+
+  - name: configure timezone (/etc/localtime)
+    file: src=../usr/share/zoneinfo/{{ timezone }} dest=/etc/localtime state=link force=yes
+
+  - name: configure NTP
+    lineinfile:
+      dest: /etc/ntp.conf
+      backup: yes
+      line: "server {{ item }}.{{ ntpCountry }}.pool.ntp.org iburst"
+      regexp: "^server {{ item }}.{{ ntpCountry }}.pool.ntp.org "
+      insertafter: "^server "
+    with_items:
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+
+  - name: start and enable ntpd
+    service: name=ntpd state=started enabled=yes
+
+  - name: fetch dot config files (e.g. .bashrc)
+    get_url: url=https://get.sysadmin.tools/dotFiles/{{ item }} dest="~/.{{ item }}" mode=0644
+    with_items:
+      - "bashrc"
+      - "vimrc"
+      - "gitconfig"
 
   handlers:
     - name: update aliases database
