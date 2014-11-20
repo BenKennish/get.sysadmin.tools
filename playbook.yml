@@ -5,23 +5,20 @@
   vars:
       # you can override these vars from command line like this:
       #
-      # ansible-playbook -e 'validateSSLCert=no sudoUser=billy'
+      # ansible-playbook -e 'sudoUser=bill ntpCountry=fr'
       #
       root_email: "ben@kennish.net"
       timezone: "Europe/London"
-      ntpCountry: "uk"  #used for NTP config
+      ntpCountry: "uk"  # used for NTP config
       sudoUser: "ben"
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
-      userConfigFiles:
-         - .bashrc
-         - .vimrc
       gitConfigName: "Ben Kennish"
       gitConfigEmail: "ben@kennish.net"
-      validateSSLCert: yes
 
   tasks:
-  #- name: yum update everything
-  #  yum: name=* state=latest
+
+  - name: yum update everything
+    yum: name=* state=latest
 
   - name: OpenSSH - disable password auth
     lineinfile:
@@ -120,37 +117,24 @@
   - name: ntpd - start and enable
     service: name=ntpd state=started enabled=yes
 
-    # TODO: this shouldn't use get_url - we might as well use files included in this git repo
-
   - name: ".config files - copy to /etc/skel"
-    copy: src="files/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644
+    copy: src="files/skel/" dest="/etc/skel/" owner=root group=root mode=0644
     with_items: userConfigFiles
-
-
-#  - name: ".config files - in /etc/skel"
-#    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" force=yes dest="/etc/skel/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
-#    with_items: userConfigFiles
-  # newly created users will have files in /etc/skel copied to their newly created home dirs
 
   - name: ".config files - copy to /root"
     copy: src="files/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644
     with_items: userConfigFiles
 
-
-#  - name: ".config files - in /root"
-#    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" force=yes dest="/root/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
-#    with_items: userConfigFiles
-
   # **TODO**: iptables config
 
   - name: vim - create /root/.vim/
-    file: name="/root/{{ item }}" state=directory mode=0700
+    file: name="/root/{{ item }}" state=directory owner=root group=root mode=0700
     with_items:
         - ".vim/swap"
         - ".vim/backup"
 
   - name: vim - create /etc/skel/.vim/
-    file: name="/etc/skel/{{ item }}" state=directory mode=0700
+    file: name="/etc/skel/{{ item }}" state=directory owner=root group=root mode=0700
     with_items:
         - ".vim/swap"
         - ".vim/backup"
@@ -175,7 +159,7 @@
         validate: 'visudo -cf %s'
 
   - name: .gitconfig - template over for {{ sudoUser }}
-    template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}"
+    template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}" mode=0600
 
   handlers:
     - name: update aliases database
