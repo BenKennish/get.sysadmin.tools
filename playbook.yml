@@ -9,6 +9,7 @@
       ntpCountry: "uk"  #used for NTP config
       sudoUser: "bill"
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
+      validateSSLCert: no
 
   tasks:
   #- name: yum update everything
@@ -113,7 +114,8 @@
 # do this for all users (modifying /etc/skel?) before creating the ben user?
 
   - name: setting up user 'dot-config' files (e.g. .bashrc) in /etc/skel
-    get_url: url="https://get.sysadmin.tools/dotFiles/{{ item }}" dest="~/.{{ item }}" mode=0644
+    get_url: url="https://get.sysadmin.tools/dotFiles/{{ item }}" dest="~/.{{ item }}" mode=0644 validate_certs="{{ validateSSLCert }}"
+# remove validate_certs=no when using proper SSL cert
     with_items:
       - "bashrc"
       - "vimrc"
@@ -133,8 +135,8 @@
   - name: allow wheel group to use sudo
     lineinfile:
         dest: /etc/sudoers
+        regexp: "^%wheel"
         line: "%wheel  ALL=(ALL)       ALL"
-        regexp: "^#? *%wheel +ALL=(ALL) +ALL"
         validate: 'visudo -cf %s'
 
   # default sudo timeout is 5 mins
