@@ -118,11 +118,11 @@
     service: name=ntpd state=started enabled=yes
 
   - name: ".config files - copy to /etc/skel"
-    copy: src="files/skel/" dest="/etc/skel/" owner=root group=root mode=0644
+    copy: src="files/" dest="/etc/skel/" owner=root group=root mode=0644
     with_items: userConfigFiles
 
   - name: ".config files - copy to /root"
-    copy: src="files/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644
+    copy: src="files/" dest="/root/" owner=root group=root mode=0644
     with_items: userConfigFiles
 
   # **TODO**: iptables config
