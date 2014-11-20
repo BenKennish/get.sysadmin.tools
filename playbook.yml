@@ -43,9 +43,9 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-   - name: install useful RPMs using yum
-     yum: pkg={{ item }} state=installed
-     with_items:
+  - name: install useful RPMs using yum
+    yum: pkg="{{ item }}" state=installed
+    with_items:
        - vim-enhanced
        - man
        - git
@@ -71,6 +71,7 @@
        - traceroute
        - bash-completion
        - epel-release
+       - libselinux-python
 
   - name: root email alias to {{ root_email }}
     lineinfile:
