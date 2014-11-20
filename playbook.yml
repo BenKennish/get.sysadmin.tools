@@ -3,18 +3,21 @@
   remote_user: root
 
   vars:
-      # **TODO**: allow these vars to be set from command line (first to bash, then forward to ansible)
+      # you can override these vars from command line like this:
+      #
+      # ansible-playbook -e 'validateSSLCert=no sudoUser=billy'
+      #
       root_email: "ben@kennish.net"
       timezone: "Europe/London"
       ntpCountry: "uk"  #used for NTP config
       sudoUser: "ben"
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
-      userConfigFiles: 
+      userConfigFiles:
          - .bashrc
          - .vimrc
       gitConfigName: "Ben Kennish"
       gitConfigEmail: "ben@kennish.net"
-      validateSSLCert: yes 
+      validateSSLCert: yes
 
   tasks:
   #- name: yum update everything
@@ -49,17 +52,13 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-  - name: YUM - install epel-release
+  - name: YUM - install epel-release RPM package
     yum: pkg=epel-release state=installed
 
-  - name: YUM - install useful RPMs
-    yum: pkg={{ item }} state=installed
-    with_items:
-       - bash-completion
-
-  - name: install useful RPMs using yum
+  - name: YUM - install useful RPM packages
     yum: pkg="{{ item }}" state=installed
     with_items:
+       - bash-completion
        - bind-utils
        - curl
        - dos2unix
@@ -84,7 +83,7 @@
        - yum-cron
        - zip
 
-  - name: setup root email alias to {{ root_email }}
+  - name: /etc/aliases - setup root email alias to {{ root_email }}
     lineinfile:
         dest: /etc/aliases
         backup: yes
@@ -121,14 +120,26 @@
   - name: ntpd - start and enable
     service: name=ntpd state=started enabled=yes
 
-  - name: ".config files - in /etc/skel"
-    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644 force=yes validate_certs="{{ validateSSLCert }}"
+    # TODO: this shouldn't use get_url - we might as well use files included in this git repo
+
+  - name: ".config files - copy to /etc/skel"
+    copy: src="files/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644
     with_items: userConfigFiles
+
+
+#  - name: ".config files - in /etc/skel"
+#    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" force=yes dest="/etc/skel/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
+#    with_items: userConfigFiles
   # newly created users will have files in /etc/skel copied to their newly created home dirs
 
-  - name: ".config files - in /root"
-    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644 force=yes validate_certs="{{ validateSSLCert }}"
+  - name: ".config files - copy to /root"
+    copy: src="files/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644
     with_items: userConfigFiles
+
+
+#  - name: ".config files - in /root"
+#    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" force=yes dest="/root/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
+#    with_items: userConfigFiles
 
   # **TODO**: iptables config
 
@@ -144,10 +155,10 @@
         - ".vim/swap"
         - ".vim/backup"
 
-  - name: create user '{{ sudoUser }}' and add them to 'wheel' group
+  - name: user '{{ sudoUser }}' - create and add to 'wheel' group
     user: name={{ sudoUser }} append=yes groups=wheel
 
-  - name: allow wheel group to use sudo
+  - name: sudo - allow wheel group to use sudo
     lineinfile:
         dest: /etc/sudoers
         regexp: "^%wheel"
@@ -155,7 +166,7 @@
         validate: 'visudo -cf %s'
 
   # default sudo timeout is 5 mins
-  - name: set sudo timeout to {{ sudoTimeout }} mins
+  - name: sudo - set timeout to {{ sudoTimeout }} mins
     lineinfile:
         dest: /etc/sudoers
         line: "Defaults    timestamp_timeout={{ sudoTimeout }}"
@@ -163,7 +174,7 @@
         insertafter: "Defaults +env_reset"
         validate: 'visudo -cf %s'
 
-  - name: template over .gitconfig
+  - name: .gitconfig - template over for {{ sudoUser }}
     template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}"
 
   handlers:
