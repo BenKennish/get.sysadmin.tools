@@ -9,6 +9,11 @@
       ntpCountry: "uk"  #used for NTP config
       sudoUser: "bill"
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
+      userConfigFiles: 
+         - .bashrc
+         - .vimrc
+      gitConfigName: "Ben Kennish"
+      gitConfigEmail: "ben@kennish.net"
 
   tasks:
   #- name: yum update everything
@@ -23,7 +28,7 @@
       insertafter: "^#PasswordAuthentication "
     notify: restart sshd
 
-#   **TODO** set root password to a random string
+#   **TODO** set root password to a random string and display it to STDOUT
 
   - name: OpenSSH - disable GSSAPI auth
     lineinfile:
@@ -43,36 +48,38 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-   - name: install useful RPMs using yum
-     yum: pkg={{ item }} state=installed
-     with_items:
-       - vim-enhanced
-       - man
-       - git
+  - name: YUM - install epel-release
+    yum: pkg=epel-release state=installed
+
+  - name: YUM - install useful RPMs
+    yum: pkg={{ item }} state=installed
+    with_items:
+       - bash-completion
        - bind-utils
        - curl
        - dos2unix
-       - unix2dos
+       - git
        - iotop
        - jwhois
        - lsof
        - lynx
        - mailx
+       - man
        - nmap
        - ntp
        - ntpdate
        - rsync
-       - telnet
        - tcpdump
+       - telnet
+       - traceroute
+       - unix2dos
+       - unzip
+       - vim-enhanced
        - wget
        - yum-cron
        - zip
-       - unzip
-       - traceroute
-       - bash-completion
-       - epel-release
 
-  - name: root email alias to {{ root_email }}
+  - name: setup root email alias to {{ root_email }}
     lineinfile:
         dest: /etc/aliases
         backup: yes
@@ -81,19 +88,19 @@
         insertafter: "^#root:"
     notify: update aliases database
 
-  - name: start and enable yum-cron
+  - name: yum-cron - start and enable
     service: name=yum-cron state=started enabled=yes
 
-  - name: configure timezone (/etc/sysconfig/clock)
+  - name: timezone config - /etc/sysconfig/clock
     lineinfile:
       dest: /etc/sysconfig/clock
       backup: yes
       line: 'ZONE="{{ timezone }}"'
 
-  - name: configure timezone (/etc/localtime)
+  - name: timezone config - /etc/localtime symlink
     file: src=../usr/share/zoneinfo/{{ timezone }} dest=/etc/localtime state=link force=yes
 
-  - name: configure NTP
+  - name: ntpd - config for {{ ntpCountry }}.pool.ntp.org
     lineinfile:
       dest: /etc/ntp.conf
       backup: yes
@@ -106,22 +113,28 @@
       - "2"
       - "3"
 
-  - name: start and enable ntpd
+  - name: ntpd - start and enable
     service: name=ntpd state=started enabled=yes
 
-# do this for all users (modifying /etc/skel?) before creating the ben user?
+  - name: ".config files - in /etc/skel"
+    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644
+    with_items: userConfigFiles
+  # newly created users will have files in /etc/skel copied to their newly created home dirs
 
-  - name: setting up user 'dot-config' files (e.g. .bashrc) in /etc/skel
-    get_url: url="https://get.sysadmin.tools/dotFiles/{{ item }}" dest="~/.{{ item }}" mode=0644
-    with_items:
-      - "bashrc"
-      - "vimrc"
-      - "gitconfig"
+  - name: ".config files - in /root"
+    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644
+    with_items: userConfigFiles
 
   # **TODO**: iptables config
 
-  - name: create directories in home for vim
-    file: name="~/{{ item }}" state=directory mode=0700
+  - name: vim - create /root/.vim/
+    file: name="/root/{{ item }}" state=directory mode=0700
+    with_items:
+        - ".vim/swap"
+        - ".vim/backup"
+
+  - name: vim - create /etc/skel/.vim/
+    file: name="/etc/skel/{{ item }}" state=directory mode=0700
     with_items:
         - ".vim/swap"
         - ".vim/backup"
@@ -144,6 +157,9 @@
         regexp: "^Defaults +timestamp_timeout=[0-9]+ *$"
         insertafter: "Defaults +env_reset"
         validate: 'visudo -cf %s'
+
+   - name: template over .gitconfig
+     template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}"
 
   handlers:
     - name: update aliases database
