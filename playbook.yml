@@ -163,8 +163,8 @@
         insertafter: "Defaults +env_reset"
         validate: 'visudo -cf %s'
 
-   - name: template over .gitconfig
-     template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}"
+  - name: template over .gitconfig
+    template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}"
 
   handlers:
     - name: update aliases database
