@@ -3,8 +3,8 @@
   remote_user: root
 
   vars:
-      # **TODO**: allow these vars to be set from command line
-      root_email: ben@kennish.net
+      # **TODO**: allow these vars to be set from command line (first to bash, then forward to ansible)
+      root_email: "ben@kennish.net"
       timezone: "Europe/London"
       ntpCountry: "uk"  #used for NTP config
       sudoUser: "bill"
@@ -43,34 +43,34 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-  # - name: install useful RPMs using yum
-  #   yum: pkg={{ item }} state=latest
-  #   with_items:
-  #     - vim-enhanced
-  #     - man
-  #     - git
-  #     - bind-utils
-  #     - curl
-  #     - dos2unix
-  #     - unix2dos
-  #     - iotop
-  #     - jwhois
-  #     - lsof
-  #     - lynx
-  #     - mailx
-  #     - nmap
-  #     - ntp
-  #     - ntpdate
-  #     - rsync
-  #     - telnet
-  #     - tcpdump
-  #     - wget
-  #     - yum-cron
-  #     - zip
-  #     - unzip
-  #     - traceroute
-  #     - bash-completion
-  #     - epel-release
+   - name: install useful RPMs using yum
+     yum: pkg={{ item }} state=installed
+     with_items:
+       - vim-enhanced
+       - man
+       - git
+       - bind-utils
+       - curl
+       - dos2unix
+       - unix2dos
+       - iotop
+       - jwhois
+       - lsof
+       - lynx
+       - mailx
+       - nmap
+       - ntp
+       - ntpdate
+       - rsync
+       - telnet
+       - tcpdump
+       - wget
+       - yum-cron
+       - zip
+       - unzip
+       - traceroute
+       - bash-completion
+       - epel-release
 
   - name: root email alias to {{ root_email }}
     lineinfile:
@@ -112,7 +112,7 @@
 # do this for all users (modifying /etc/skel?) before creating the ben user?
 
   - name: setting up user 'dot-config' files (e.g. .bashrc) in /etc/skel
-    get_url: url=https://get.sysadmin.tools/dotFiles/{{ item }} dest="~/.{{ item }}" mode=0644
+    get_url: url="https://get.sysadmin.tools/dotFiles/{{ item }}" dest="~/.{{ item }}" mode=0644
     with_items:
       - "bashrc"
       - "vimrc"
@@ -137,7 +137,7 @@
         validate: 'visudo -cf %s'
 
   # default sudo timeout is 5 mins
-  - name: set sudo timeout to {{ sudoTimeout }}mins
+  - name: set sudo timeout to {{ sudoTimeout }} mins
     lineinfile:
         dest: /etc/sudoers
         line: "Defaults    timestamp_timeout={{ sudoTimeout }}"
