@@ -7,14 +7,14 @@
       root_email: "ben@kennish.net"
       timezone: "Europe/London"
       ntpCountry: "uk"  #used for NTP config
-      sudoUser: "bill"
+      sudoUser: "ben"
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
       userConfigFiles: 
          - .bashrc
          - .vimrc
       gitConfigName: "Ben Kennish"
       gitConfigEmail: "ben@kennish.net"
-      validateSSLCert: no
+      validateSSLCert: yes 
 
   tasks:
   #- name: yum update everything
