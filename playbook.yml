@@ -122,12 +122,12 @@
     service: name=ntpd state=started enabled=yes
 
   - name: ".config files - in /etc/skel"
-    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
+    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root mode=0644 force=yes validate_certs="{{ validateSSLCert }}"
     with_items: userConfigFiles
   # newly created users will have files in /etc/skel copied to their newly created home dirs
 
   - name: ".config files - in /root"
-    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644 validate_certs="{{ validateSSLCert }}"
+    get_url: url="https://get.sysadmin.tools/userConfigFiles/{{ item }}" dest="/root/{{ item }}" owner=root group=root mode=0644 force=yes validate_certs="{{ validateSSLCert }}"
     with_items: userConfigFiles
 
   # **TODO**: iptables config
