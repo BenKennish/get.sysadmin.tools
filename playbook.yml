@@ -7,17 +7,41 @@
       #
       # ansible-playbook -e 'sudoUser=bill ntpCountry=fr'
       #
-      root_email: "ben@kennish.net"
+      rootEmail: ""  # who receives root's emails
       timezone: "Europe/London"
       ntpCountry: "uk"  # used for NTP config
-      sudoUser: "ben"
+      sudoUser: ""
       sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
-      gitConfigName: "Ben Kennish"
-      gitConfigEmail: "ben@kennish.net"
+      gitConfigName: ""
+      gitConfigEmail: ""
 
   tasks:
 
-  - name: yum update everything
+# ----------------------------------------------------------------------------
+# fail if certain vars are not defined
+  - fail: msg="rootEmail not set"
+    when: rootEmail == ""
+
+  - fail: msg="sudoUser not set"
+    when: sudoUser == ""
+
+  - fail: msg="gitConfigName not set"
+    when: gitConfigName == ""
+
+  - fail: msg="gitConfigEmail not set"
+    when: gitConfigEmail == ""
+# ----------------------------------------------------------------------------
+  - name: selinux - check if enabled
+    command: /usr/sbin/selinuxenabled
+    register: seLinuxEnabled
+    ignore_errors: yes
+    changed_when: False
+
+  - name: yum - install libselinux-python
+    yum: name=libselinux-python state=installed
+    when: seLinuxEnabled.rc == 0
+
+  - name: yum - update everything
     yum: name=* state=latest
 
   - name: OpenSSH - disable password auth
@@ -80,11 +104,11 @@
        - yum-cron
        - zip
 
-  - name: /etc/aliases - setup root email alias to {{ root_email }}
+  - name: /etc/aliases - setup root email alias to {{ rootEmail }}
     lineinfile:
         dest: /etc/aliases
         backup: yes
-        line: "root:          {{ root_email }}"
+        line: "root:          {{ rootEmail }}"
         regexp: "^root:"
         insertafter: "^#root:"
     notify: update aliases database
