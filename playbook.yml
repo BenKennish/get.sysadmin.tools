@@ -73,10 +73,10 @@
       insertafter: "^#ChallengeResponseAuthentication "
     notify: restart sshd
 
-  - name: YUM - install epel-release RPM package
+  - name: yum - install epel-release RPM package
     yum: pkg=epel-release state=installed
 
-  - name: YUM - install useful RPM packages
+  - name: yum - install useful RPM packages
     yum: pkg="{{ item }}" state=installed
     with_items:
        - bash-completion
