@@ -23,7 +23,7 @@
         - "rootEmail != ''"
         - "sudoUser != ''"
         - "gitConfigName != ''"
-        - "getConfigEMail != ''"
+        - "gitConfigEmail != ''"
 
   - name: selinux - check if enabled
     command: /usr/sbin/selinuxenabled
