@@ -17,20 +17,14 @@
 
   tasks:
 
-# ----------------------------------------------------------------------------
-# fail if certain vars are not defined
-  - fail: msg="rootEmail not set"
-    when: rootEmail == ""
+  - name: check that all required vars have been set
+    assert:
+      that:
+        - "rootEmail != ''"
+        - "sudoUser != ''"
+        - "gitConfigName != ''"
+        - "getConfigEMail != ''"
 
-  - fail: msg="sudoUser not set"
-    when: sudoUser == ""
-
-  - fail: msg="gitConfigName not set"
-    when: gitConfigName == ""
-
-  - fail: msg="gitConfigEmail not set"
-    when: gitConfigEmail == ""
-# ----------------------------------------------------------------------------
   - name: selinux - check if enabled
     command: /usr/sbin/selinuxenabled
     register: seLinuxEnabled
