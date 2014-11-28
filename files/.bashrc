@@ -10,6 +10,7 @@ fi
 # Ben's self-made aliases...
 # see http://alias.sh/
 
+alias ll='ls -lA --color=auto'
 alias l.='ls -ld .* --color=auto'
 alias sd='sudo'
 

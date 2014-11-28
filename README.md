@@ -1,7 +1,7 @@
 get.sysadmin.tools
-==============
+==================
 
-An Ansible playbook and files to set up a Linux server how I like it
+An Ansible playbook and files that help to set up a Linux server just how I like it
 
 Example of usage:
 ```

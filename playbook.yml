@@ -47,7 +47,10 @@
       insertafter: "^#PasswordAuthentication "
     notify: restart sshd
 
-#   **TODO** set root password to a random string and display it to STDOUT
+#   **TODO** set root password to a random string and display it to STDOUT?
+#            maybe only if a password is not set
+#   **TODO** server hardening (see CentOS guide)
+#   **TODO**: iptables config
 
   - name: OpenSSH - disable GSSAPI auth
     lineinfile:
@@ -110,6 +113,8 @@
   - name: yum-cron - start and enable
     service: name=yum-cron state=started enabled=yes
 
+# TODO: setup yum-cron to check and download only (no auto-install)
+
   - name: timezone config - /etc/sysconfig/clock
     lineinfile:
       dest: /etc/sysconfig/clock
@@ -119,7 +124,7 @@
   - name: timezone config - /etc/localtime symlink
     file: src=../usr/share/zoneinfo/{{ timezone }} dest=/etc/localtime state=link force=yes
 
-  - name: ntpd - config for {{ ntpCountry }}.pool.ntp.org
+  - name: ntpd - use servers in {{ ntpCountry }}.pool.ntp.org
     lineinfile:
       dest: /etc/ntp.conf
       backup: yes
@@ -135,30 +140,48 @@
   - name: ntpd - start and enable
     service: name=ntpd state=started enabled=yes
 
-  - name: ".config files - copy to /etc/skel"
-    copy: src="files/" dest="/etc/skel/" owner=root group=root mode=0644
-    with_items: userConfigFiles
 
-  - name: ".config files - copy to /root"
-    copy: src="files/" dest="/root/" owner=root group=root mode=0644
-    with_items: userConfigFiles
 
-  # **TODO**: iptables config
+  - name: "copy user config files to /etc/skel/"
+    copy: src="files/" dest="/etc/skel/" owner=root group=root
 
-  - name: vim - create /root/.vim/
-    file: name="/root/{{ item }}" state=directory owner=root group=root mode=0700
+  - name: create .vim directory in /etc/skel/
+    file: path=/etc/skel/{{ item }} state=directory owner=root group=root mode=0700
     with_items:
-        - ".vim/swap"
-        - ".vim/backup"
+        - .vim
+        - .vim/backup
+        - .vim/swap
 
-  - name: vim - create /etc/skel/.vim/
-    file: name="/etc/skel/{{ item }}" state=directory owner=root group=root mode=0700
+
+
+  - name: "copy user config files to /root/"
+    copy: src="files/" dest="/root/" backup=yes owner=root group=root
+
+  - name: create .vim directory in /root/
+    file: path=/root/{{ item }} state=directory owner=root group=root mode=0700
     with_items:
-        - ".vim/swap"
-        - ".vim/backup"
+        - .vim
+        - .vim/backup
+        - .vim/swap
+
+
 
   - name: user '{{ sudoUser }}' - create and add to 'wheel' group
     user: name={{ sudoUser }} append=yes groups=wheel
+
+
+# TODO: this step is always returning changed - figure out why#
+  - name: "copy user config files to ~{{ sudoUser }}"
+    copy: src="files/" dest="~{{ sudoUser }}/" backup=yes owner={{ sudoUser }} group={{ sudoUser }}
+
+  - name: create .vim directory in ~{{ sudoUser }}
+    file: path="~{{ sudoUser }}/{{ item }}" state=directory owner={{ sudoUser }} group={{ sudoUser }} mode=0700
+    with_items:
+        - .vim
+        - .vim/backup
+        - .vim/swap
+
+
 
   - name: sudo - allow wheel group to use sudo
     lineinfile:
@@ -167,7 +190,6 @@
         line: "%wheel  ALL=(ALL)       ALL"
         validate: 'visudo -cf %s'
 
-  # default sudo timeout is 5 mins
   - name: sudo - set timeout to {{ sudoTimeout }} mins
     lineinfile:
         dest: /etc/sudoers
