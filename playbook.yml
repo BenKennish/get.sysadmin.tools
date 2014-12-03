@@ -7,13 +7,21 @@
       #
       # ansible-playbook -e 'sudoUser=bill ntpCountry=fr'
       #
-      rootEmail: ""  # who receives root's emails
-      timezone: "Europe/London"
-      ntpCountry: "uk"  # used for NTP config
-      sudoUser: ""
-      sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
-      gitConfigName: ""
-      gitConfigEmail: ""
+    rootEmail: ""  # who receives root's emails
+    timezone: "Europe/London"
+    ntpCountry: "uk"  # used for NTP config
+    sudoUser: ""
+    sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
+    gitConfigName: ""
+    gitConfigEmail: ""
+    #
+    vimDirs:
+        - .vim
+        - .vim/backup
+        - .vim/swap
+    configFiles:
+        - .bashrc
+        - .vimrc
 
   tasks:
 
@@ -101,6 +109,8 @@
        - yum-cron
        - zip
 
+  - debug: msg="TODO: set CHECK_ONLY=yes and DOWNLOAD_ONLY=yes in /etc/sysconfig/yum-cron "
+
   - name: /etc/aliases - setup root email alias to {{ rootEmail }}
     lineinfile:
         dest: /etc/aliases
@@ -141,47 +151,35 @@
     service: name=ntpd state=started enabled=yes
 
 
-
   - name: "copy user config files to /etc/skel/"
-    copy: src="files/" dest="/etc/skel/" owner=root group=root
+    copy: src="files/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root
+    with_items: configFiles
 
   - name: create .vim directory in /etc/skel/
     file: path=/etc/skel/{{ item }} state=directory owner=root group=root mode=0700
-    with_items:
-        - .vim
-        - .vim/backup
-        - .vim/swap
-
+    with_items: vimDirs
 
 
   - name: "copy user config files to /root/"
-    copy: src="files/" dest="/root/" backup=yes owner=root group=root
+    copy: src="files/{{ item }}" dest="/root/{{ item }}" backup=yes owner=root group=root
+    with_items: configFiles
 
   - name: create .vim directory in /root/
     file: path=/root/{{ item }} state=directory owner=root group=root mode=0700
-    with_items:
-        - .vim
-        - .vim/backup
-        - .vim/swap
-
+    with_items: vimDirs
 
 
   - name: user '{{ sudoUser }}' - create and add to 'wheel' group
     user: name={{ sudoUser }} append=yes groups=wheel
 
 
-# TODO: this step is always returning changed - figure out why#
-  - name: "copy user config files to ~{{ sudoUser }}"
-    copy: src="files/" dest="~{{ sudoUser }}/" backup=yes owner={{ sudoUser }} group={{ sudoUser }}
+  - name: copy user config files to ~{{ sudoUser }}
+    copy: src="files/{{ item }}" dest="~{{ sudoUser }}/{{ item }}" owner={{ sudoUser }} group={{ sudoUser }} backup=yes
+    with_items: configFiles
 
   - name: create .vim directory in ~{{ sudoUser }}
     file: path="~{{ sudoUser }}/{{ item }}" state=directory owner={{ sudoUser }} group={{ sudoUser }} mode=0700
-    with_items:
-        - .vim
-        - .vim/backup
-        - .vim/swap
-
-
+    with_items: vimDirs
 
   - name: sudo - allow wheel group to use sudo
     lineinfile:
@@ -200,6 +198,30 @@
 
   - name: .gitconfig - template over for {{ sudoUser }}
     template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}" mode=0600
+
+  - name: restrict /root to root user
+    file: path=/root state=directory owner=root group=root mode=0700
+
+  - name: use sha512 hash for passwords
+    command: authconfig --passalgo=sha512 --update
+
+  - name: sysctl - reject ICMP redirects
+    lineinfile:
+      dest: /etc/sysctl.conf
+      line: "net.ipv4.conf.all.accept_redirects = 0"
+      regexp: "^net.ipv4.conf.all.accept_redirects *="
+
+  - name: sysctl - reject 'secure' redirects (from default gateways)
+    lineinfile:
+      dest: /etc/sysctl.conf
+      line: "net.ipv4.conf.all.secure_redirects = 0"
+      regexp: "^net.ipv4.conf.all.secure_redirects *="
+
+  - name: sysctl - log martians (packets with impossible addresses)
+    lineinfile:
+      dest: /etc/sysctl.conf
+      line: "net.ipv4.conf.all.log_martians = 1"
+      regexp: "^net.ipv4.conf.all.log_martians *="
 
   handlers:
     - name: update aliases database
