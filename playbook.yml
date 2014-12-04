@@ -109,7 +109,7 @@
        - yum-cron
        - zip
 
-  - debug: msg="TODO: set CHECK_ONLY=yes and DOWNLOAD_ONLY=yes in /etc/sysconfig/yum-cron "
+  - debug: msg="TODO - set CHECK_ONLY=yes and DOWNLOAD_ONLY=yes in /etc/sysconfig/yum-cron "
 
   - name: /etc/aliases - setup root email alias to {{ rootEmail }}
     lineinfile:
