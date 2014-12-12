@@ -84,6 +84,7 @@
   - name: yum - install useful RPM packages
     yum: pkg="{{ item }}" state=installed
     with_items:
+       - authconfig
        - bash-completion
        - bind-utils
        - curl
