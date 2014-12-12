@@ -5,16 +5,18 @@
   vars:
       # you can override these vars from command line like this:
       #
-      # ansible-playbook -e 'sudoUser=bill ntpCountry=fr'
+      # ansible-playbook -e 'mainUser=bill ntpCountry=fr'
       #
-    rootEmail: ""  # who receives root's emails
     timezone: "Europe/London"
-    ntpCountry: "uk"  # used for NTP config
-    sudoUser: ""
-    sudoTimeout: 30  # sudo timeout in minutes (set to -1 to disable timeout)
-    gitConfigName: ""
-    gitConfigEmail: ""
-    #
+    ntpCountry: "uk"    # used for NTP config
+    sudoTimeout: 30     # sudo timeout in minutes (set to -1 to disable timeout)
+    rootEmail: ""       # who receives root's emails
+    mainUser: ""        # name of user to setup sudo/git for
+    configureSudo: True # do we configure sudo to allow a user to do root things
+    configureGit: True  # do we configure git for mainUser
+    gitConfigName: ""   # full name of user for git commits
+    gitConfigEmail: ""  # email address of user for git commits
+    
     vimDirs:
         - .vim
         - .vim/backup
@@ -25,11 +27,11 @@
 
   tasks:
 
-  - name: check that all required vars have been set
+  - name: "check that all required vars have been set (e.g. -e 'mainUser=bill ntpCountry=fr')"
     assert:
       that:
         - "rootEmail != ''"
-        - "sudoUser != ''"
+        - "mainUser != ''"
         - "gitConfigName != ''"
         - "gitConfigEmail != ''"
 
@@ -44,7 +46,7 @@
     when: seLinuxEnabled.rc == 0
 
   - name: yum - update everything
-    yum: name=* state=latest
+    yum: name='*' state=latest
 
   - name: OpenSSH - disable password auth
     lineinfile:
@@ -110,7 +112,6 @@
        - yum-cron
        - zip
 
-  - debug: msg="TODO - set CHECK_ONLY=yes and DOWNLOAD_ONLY=yes in /etc/sysconfig/yum-cron "
 
   - name: /etc/aliases - setup root email alias to {{ rootEmail }}
     lineinfile:
@@ -124,7 +125,7 @@
   - name: yum-cron - start and enable
     service: name=yum-cron state=started enabled=yes
 
-# TODO: setup yum-cron to check and download only (no auto-install)
+  - debug: msg="TODO - option to set CHECK_ONLY=yes and DOWNLOAD_ONLY=yes in /etc/sysconfig/yum-cron "
 
   - name: timezone config - /etc/sysconfig/clock
     lineinfile:
@@ -151,7 +152,6 @@
   - name: ntpd - start and enable
     service: name=ntpd state=started enabled=yes
 
-
   - name: "copy user config files to /etc/skel/"
     copy: src="files/{{ item }}" dest="/etc/skel/{{ item }}" owner=root group=root
     with_items: configFiles
@@ -159,7 +159,6 @@
   - name: create .vim directory in /etc/skel/
     file: path=/etc/skel/{{ item }} state=directory owner=root group=root mode=0700
     with_items: vimDirs
-
 
   - name: "copy user config files to /root/"
     copy: src="files/{{ item }}" dest="/root/{{ item }}" backup=yes owner=root group=root
@@ -169,17 +168,15 @@
     file: path=/root/{{ item }} state=directory owner=root group=root mode=0700
     with_items: vimDirs
 
+  - name: user '{{ mainUser }}' - create and add to 'wheel' group
+    user: name={{ mainUser }} append=yes groups=wheel
 
-  - name: user '{{ sudoUser }}' - create and add to 'wheel' group
-    user: name={{ sudoUser }} append=yes groups=wheel
-
-
-  - name: copy user config files to ~{{ sudoUser }}
-    copy: src="files/{{ item }}" dest="~{{ sudoUser }}/{{ item }}" owner={{ sudoUser }} group={{ sudoUser }} backup=yes
+  - name: copy user config files to ~{{ mainUser }}
+    copy: src="files/{{ item }}" dest="~{{ mainUser }}/{{ item }}" owner={{ mainUser }} group={{ mainUser }} backup=yes
     with_items: configFiles
 
-  - name: create .vim directory in ~{{ sudoUser }}
-    file: path="~{{ sudoUser }}/{{ item }}" state=directory owner={{ sudoUser }} group={{ sudoUser }} mode=0700
+  - name: create .vim directory in ~{{ mainUser }}
+    file: path="~{{ mainUser }}/{{ item }}" state=directory owner={{ mainUser }} group={{ mainUser }} mode=0700
     with_items: vimDirs
 
   - name: sudo - allow wheel group to use sudo
@@ -188,6 +185,7 @@
         regexp: "^%wheel"
         line: "%wheel  ALL=(ALL)       ALL"
         validate: 'visudo -cf %s'
+    when: configureSudo
 
   - name: sudo - set timeout to {{ sudoTimeout }} mins
     lineinfile:
@@ -196,37 +194,48 @@
         regexp: "^Defaults +timestamp_timeout=[0-9]+ *$"
         insertafter: "Defaults +env_reset"
         validate: 'visudo -cf %s'
+    when: configureSudo
 
-  - name: .gitconfig - template over for {{ sudoUser }}
-    template: src="templates/.gitconfig.j2" dest="~{{ sudoUser }}/.gitconfig" owner="{{ sudoUser }}" group="{{ sudoUser }}" mode=0600
+  - name: .gitconfig - template over for {{ mainUser }}
+    template: src="templates/.gitconfig.j2" dest="~{{ mainUser }}/.gitconfig" owner="{{ mainUser }}" group="{{ mainUser }}" mode=0600
+    when: configureGit
 
   - name: restrict /root to root user
     file: path=/root state=directory owner=root group=root mode=0700
 
   - name: use sha512 hash for passwords
     command: authconfig --passalgo=sha512 --update
+#TODO: do this without always returning 'changed'
 
   - name: sysctl - reject ICMP redirects
     lineinfile:
       dest: /etc/sysctl.conf
       line: "net.ipv4.conf.all.accept_redirects = 0"
       regexp: "^net.ipv4.conf.all.accept_redirects *="
+    notify: reboot
 
   - name: sysctl - reject 'secure' redirects (from default gateways)
     lineinfile:
       dest: /etc/sysctl.conf
       line: "net.ipv4.conf.all.secure_redirects = 0"
       regexp: "^net.ipv4.conf.all.secure_redirects *="
+    notify: reboot
 
   - name: sysctl - log martians (packets with impossible addresses)
     lineinfile:
       dest: /etc/sysctl.conf
       line: "net.ipv4.conf.all.log_martians = 1"
       regexp: "^net.ipv4.conf.all.log_martians *="
+    notify: reboot
 
+# ----------------------------------------------------------------------------
+ 
   handlers:
     - name: update aliases database
       command: newaliases
 
     - name: restart sshd
       service: name=sshd state=restarted
+
+    - name: reboot
+      debug: msg="You need to reboot this system for some changes to take effect"
