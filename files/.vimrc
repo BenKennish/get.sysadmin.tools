@@ -18,16 +18,16 @@ set nocompatible
 set backspace=indent,eol,start
 
 if has("vms")
-  set nobackup		" do not keep a backup file, use versions instead
+  set nobackup	" do not keep a backup file, use versions instead
 else
-  set backup		" keep a backup file
+  set backup	" keep a backup file
 endif
-set history=50		" keep 50 lines of command line history
+set history=50  " keep 50 lines of command line history
 set ruler		" show the cursor position all the time
 set showcmd		" display incomplete commands
-set incsearch		" do incremental searching
+set incsearch	" do incremental searching
 
-set background=dark     " use colour scheme appropraite for dark backgrounds
+set background=dark     " use colour scheme appropriate for dark backgrounds
 
 " For Win32 GUI: remove 't' flag from 'guioptions': no tearoff menu entries
 " let &guioptions = substitute(&guioptions, "t", "", "g")
@@ -94,9 +94,15 @@ if !exists(":DiffOrig")
 endif
 
 " Ben added this stuff from looking at http://vim.wikia.com/wiki/Example_vimrc
-set shiftwidth=4
-set softtabstop=4
-set expandtab
+" Settings for using soft tabs
+set softtabstop=4 " interpret TAB keypress as an 'indent' command
+set shiftwidth=4  " mod-N indentation used when you hit the TAB key 
+set tabstop=4     " display TAB character as mmp
+set expandtab     " insert spaces instead of TAB characters
+
+" Settings for using hard TAB characters
+" set shiftwidth=4 " mod-N indentation  
+" set tabstop=4    " display TAB character  
 
 " Store swap files somewhere tidier, not current directory. 
 " The '//' saves it with a filename that includes the full path of the
