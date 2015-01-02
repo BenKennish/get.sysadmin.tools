@@ -45,6 +45,18 @@
     yum: name=libselinux-python state=installed
     when: seLinuxEnabled.rc == 0
 
+#  - name: yum - remove unnecessary packages
+#    yum: name="{{ item }}" state=absent
+#    with_items:
+#       - example
+
+  - name: disable unnecessary services
+    service: name="{{ item }}" state=stopped enabled=no
+    with_items:
+        - cups
+        - rpcbind 
+        - nfslock
+
   - name: yum - update everything
     yum: name='*' state=latest
 
