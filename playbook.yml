@@ -102,6 +102,7 @@
        - bash-completion
        - bind-utils
        - curl
+       - cronie-noanacron
        - dos2unix
        - git
        - iotop
@@ -124,6 +125,8 @@
        - yum-cron
        - zip
 
+  - name: remove cronie-anacron
+    yum: pkg=cronie-anacron state=absent
 
   - name: /etc/aliases - setup root email alias to {{ rootEmail }}
     lineinfile:
