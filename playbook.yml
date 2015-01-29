@@ -69,8 +69,7 @@
       insertafter: "^#PasswordAuthentication "
     notify: restart sshd
 
-#   **TODO** set root password to a random string and display it to STDOUT?
-#            maybe only if a password is not set
+#   **TODO** set root password if not set - difficult as user module requires crypted values not plaintext
 #   **TODO** server hardening (see CentOS guide)
 #   **TODO**: iptables config
 
